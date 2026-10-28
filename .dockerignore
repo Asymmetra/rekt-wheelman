@@ -1,0 +1,9 @@
+.git
+node_modules
+test
+.env
+.env.*
+keys
+wallets
+*keypair*.json
+.wheelman

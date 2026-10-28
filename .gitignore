@@ -1,0 +1,13 @@
+node_modules
+coverage/
+*.log
+*.tgz
+.wheelman/
+
+# Secrets and wallets: never commit them.
+.env
+.env.*
+!.env.example
+keys/
+wallets/
+*keypair*.json

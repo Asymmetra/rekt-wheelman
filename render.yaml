@@ -1,0 +1,29 @@
+# One background worker. Values marked sync: false are set in the Render dashboard, never here.
+# Put the wallet in a Secret File named bot-keypair.json, or set WALLET_SECRET_KEY instead.
+services:
+  - type: worker
+    name: wheelman
+    runtime: node
+    region: frankfurt
+    plan: starter
+    buildCommand: npm ci --omit=dev
+    startCommand: node src/cli.ts run
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: RPC_URL
+        sync: false
+      - key: KEYPAIR_PATH
+        value: /etc/secrets/bot-keypair.json
+      - key: STRATEGY
+        value: knockout-momentum
+      - key: MARKET
+        value: BTC
+      - key: MAX_STAKE_USDC
+        value: "1"
+      - key: MAX_OPEN
+        value: "2"
+      - key: DAILY_LOSS_USDC
+        sync: false
+      - key: MIN_BALANCE_USDC
+        value: "0"
