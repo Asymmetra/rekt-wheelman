@@ -1,6 +1,6 @@
 {
   "name": "@rekt-trading/wheelman",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Wheelman, the Rekt trading bot and CLI, for Knockout and Minute: a bot, a command line and an MCP server for agents.",
   "license": "Apache-2.0",
   "type": "module",
