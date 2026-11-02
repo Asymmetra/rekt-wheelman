@@ -104,7 +104,11 @@ jobs:
           } >> "$GITHUB_OUTPUT"
           [ "$GOT" = "$EXPECTED" ] || { echo "the build differs from the approved sha256; nothing was published" >&2; exit 1; }
 
+      # Only on a dry run: with trusted publishing, npm signs the tarball (a provenance entry in the public
+      # transparency log) even on --dry-run, and a second signing of the same tarball in the same job is refused
+      # with a 409 (TLOG_CREATE_ENTRY_ERROR, seen 11-02), so the real publish must be the only signing.
       - name: Dry run
+        if: ${{ inputs.dry_run }}
         run: npm publish "${{ steps.tarball.outputs.tgz }}" --access public --dry-run
 
       - name: Publish
