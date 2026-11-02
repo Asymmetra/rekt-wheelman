@@ -298,7 +298,7 @@ export async function run(ctx: Ctx, a: Args, signal: AbortSignal) {
   const { cfg } = h;
   log('ready', { mode: a.paper ? 'paper' : a.dryRun ? 'dry-run' : 'live', strategy: cfg.strategy!.id, market: cfg.market, rpc: h.rpc.host, owner: cfg.owner?.toBase58() ?? 'none' });
   if (a.dryRun === true) return dryRun(h);
-  const source = ctx.prices ?? priceSource(cfg.priceSource, cfg.replayFile);
+  const source = ctx.prices ?? priceSource(cfg.priceSource, cfg.replayFile, ctx.env);
   const loop = { market: cfg.market, strategy: cfg.strategy!, params: cfg.params, limits: cfg.limits, source, signal };
   if (a.paper === true) {
     // A replay runs on a fresh paper account; a live price runs on the one the paper commands use.
@@ -365,7 +365,7 @@ async function paperAccount(h: Handles, market: string, fresh = false) {
 
 /** One price per market the paper account holds, now: it fills orders and ends what it ends. */
 async function markPaper(ctx: Ctx, paper: Paper) {
-  ctx.prices ??= priceSource(ctx.env.PRICE_SOURCE ?? 'coinbase', ctx.env.REPLAY_FILE);
+  ctx.prices ??= priceSource(ctx.env.PRICE_SOURCE ?? 'coinbase', ctx.env.REPLAY_FILE, ctx.env);
   const closed = [];
   for (const m of new Set([paper.market, ...paper.open.map((p) => p.market)])) {
     const t = await ctx.prices.latest(m);

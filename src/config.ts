@@ -5,6 +5,7 @@ import { Keypair, PublicKey } from '@solana/web3.js';
 import { parseUsdc } from '@rekt-trading/1000x';
 import { Refusal } from './errors.ts';
 import { addSecret } from './journal.ts';
+import { PRICE_SOURCES, pythFeeds, pythKey, resolveSourceName } from './prices.ts';
 import type { Limits } from './risk.ts';
 import type { Param, Params, Strategy } from './strategies/index.ts';
 
@@ -148,8 +149,26 @@ export function parseConfig(env: Env, needs: Needs, strategies: Map<string, Stra
   if (!MARKETS.includes(market)) problems.push(`MARKET must be one of ${MARKETS.join(', ')}`);
   const priceSource = get('PRICE_SOURCE') ?? 'coinbase';
   const replayFile = get('REPLAY_FILE');
-  if (!['coinbase', 'replay'].includes(priceSource)) problems.push('PRICE_SOURCE must be coinbase or replay');
+  if (!(PRICE_SOURCES as readonly string[]).includes(priceSource)) problems.push(`PRICE_SOURCE must be ${PRICE_SOURCES.join(', ')}`);
   if (priceSource === 'replay' && replayFile === undefined) problems.push('PRICE_SOURCE=replay needs REPLAY_FILE');
+  // The caller's own Pyth key is optional. Whatever way it is given, it is registered so no log line can carry it.
+  let hasPythKey = false;
+  try {
+    const key = pythKey(env);
+    hasPythKey = key !== null;
+    addSecret(key ?? undefined);
+  } catch (e) {
+    problems.push((e as Error).message);
+  }
+  try {
+    pythFeeds(get('PYTH_FEEDS'));
+  } catch (e) {
+    problems.push((e as Error).message);
+  }
+  if (priceSource === 'pyth' && !hasPythKey && problems.every((p) => !p.startsWith('PYTH_API_KEY_FILE'))) {
+    problems.push('PRICE_SOURCE=pyth needs your Pyth key: set PYTH_API_KEY, or PYTH_API_KEY_FILE');
+  }
+  const exchangeFeed = resolveSourceName((PRICE_SOURCES as readonly string[]).includes(priceSource) ? priceSource : 'replay', hasPythKey ? { PYTH_API_KEY: 'set' } : {}) === 'coinbase';
 
   const limits: Limits = {
     maxStake: usdc('MAX_STAKE_USDC', '1'),
@@ -167,8 +186,8 @@ export function parseConfig(env: Env, needs: Needs, strategies: Map<string, Stra
     strategy = id === undefined ? null : (strategies.get(id) ?? null);
     if (id === undefined) problems.push(`STRATEGY is required: one of ${[...strategies.keys()].join(', ')}`);
     else if (strategy === null) problems.push(`STRATEGY ${id} does not exist: use one of ${[...strategies.keys()].join(', ')}`);
-    if (strategy?.game === 'knockout' && priceSource === 'coinbase' && market === 'XAU') {
-      problems.push('PRICE_SOURCE=coinbase has no XAU price; use replay, or add an adapter in src/prices.ts');
+    if (strategy?.game === 'knockout' && exchangeFeed && market === 'XAU') {
+      problems.push('the exchange feed has no XAU price; set PRICE_SOURCE=pyth with your Pyth key (PYTH_API_KEY), use replay, or add an adapter in src/prices.ts');
     }
   }
   if (strategy !== null) {

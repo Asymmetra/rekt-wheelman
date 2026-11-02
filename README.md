@@ -5,7 +5,7 @@ Knockout and Minute. You run it on your own machine, with your own wallet and yo
 It uses the Rekt SDK, `@rekt-trading/1000x` from npm, for both games, and it sends nothing the risk
 limits have not allowed.
 
-**Status: 1.0.0, on mainnet.** Wheelman runs from a clone of this repository. It is not an npm package.
+**Status: 1.0.0, on mainnet.** Install it from npm as `@rekt-trading/wheelman`, or run it from a clone of this repository.
 
 - Documentation: <https://docs.rekt.money>
 - Contact: support@asymmetra.xyz
@@ -13,14 +13,23 @@ limits have not allowed.
 
 ## Start in two minutes
 
-Node 22.18 or later. There is no build step: Node runs the TypeScript directly. `npm link` puts
-`wheelman` on your path; without it, run `node src/cli.ts` in its place. Run it from a clone: `npx`
-and `npm install -g` from a git URL do not work, because Node does not run TypeScript from
-`node_modules`.
+Node 22.18 or later.
 
 ```sh
-git clone <this repository's URL> wheelman && cd wheelman
+npm install -g @rekt-trading/wheelman
+```
+
+Or run it from a clone: Node runs the TypeScript in `src/` directly there, with no build step. In a
+clone, `npm link` puts `wheelman` on your path; without it, run `node src/cli.ts` in its place.
+
+```sh
+git clone https://github.com/Asymmetra/rekt-wheelman wheelman && cd wheelman
 npm install && npm link
+```
+
+Then:
+
+```sh
 wheelman setup                           # wallet, RPC, strategy, risk limits; writes .env (mode 600)
 wheelman markets                         # every market, its stake bounds and fees
 wheelman preview BTC long 1 --target 2   # what an open costs and pays, after every fee
@@ -180,7 +189,8 @@ elsewhere. `.env.example` lists every variable with one line on each. The ones y
 | `OWNER`, `SESSION_KEYPAIR_PATH` | an agent's settings: the wallet's address and its session key |
 | `STRATEGY`, `MARKET`, `PARAM_*` | what the bot trades |
 | `MAX_STAKE_USDC`, `MAX_OPEN`, `DAILY_LOSS_USDC`, `MIN_BALANCE_USDC` | the risk limits |
-| `PRICE_SOURCE` | `coinbase` (live, no key) or `replay` (a tape, paper mode) |
+| `PRICE_SOURCE` | `coinbase` (live, no key), `pyth` (your own Pyth key), `auto` (Pyth when you set a key, else Coinbase) or `replay` (a tape, paper mode) |
+| `PYTH_API_KEY` or `PYTH_API_KEY_FILE` | your own Pyth Pro key, for `pyth` and `auto` |
 
 Wheelman checks every variable before its first RPC call and refuses a bad value with the reason.
 
@@ -231,9 +241,22 @@ Drop in any endpoint: Helius, Triton, QuickNode, or your own node. Wheelman uses
 
 ## Prices
 
-A price is needed only for a strategy's signal and for paper fills. `PRICE_SOURCE=coinbase` reads
-Coinbase's public ticker (no key, no account) for BTC, ETH, SOL and XRP. `PRICE_SOURCE=replay` reads
-a tape for paper mode: one JSON line a price, `{"time": 1767225600000, "market": "BTC", "price": 100000}`.
+A price is needed only for a strategy's signal and for paper fills. Pick the source with `PRICE_SOURCE`:
+
+| `PRICE_SOURCE` | What it reads | Needs |
+|---|---|---|
+| `coinbase` (the default) | Coinbase's public ticker, for BTC, ETH, SOL and XRP | nothing: no key, no account |
+| `pyth` | Pyth Pro's price stream, with your own key | `PYTH_API_KEY` (or `PYTH_API_KEY_FILE`) |
+| `auto` | Pyth when a key is set, Coinbase when not | optional: `PYTH_API_KEY` |
+| `replay` | a tape, for paper mode: one JSON line a price, `{"time": 1767225600000, "market": "BTC", "price": 100000}` | `REPLAY_FILE` |
+
+To use your own Pyth key, set `PYTH_API_KEY=<your key>` and `PRICE_SOURCE=pyth` (or leave `PRICE_SOURCE=auto`).
+The key goes to Pyth over its stream connection and nowhere else, and no log line carries it. Wheelman finds the
+feed of your market in Pyth's public feed list when it starts, so there is no table to keep. When a market has no
+single feed there, Wheelman refuses with the way to name one: `PYTH_FEEDS=<market>=<Pyth feed id>`. If Pyth closes
+the connection six times without a price, Wheelman stops and says to check the key. A Pyth key is for prices only:
+trading the venue never needs one.
+
 To add a source, write one function in `src/prices.ts` that returns a `PriceSource`.
 
 ## Hosting

@@ -1,7 +1,6 @@
 {
-  "name": "rekt-wheelman-cli",
+  "name": "@rekt-trading/wheelman",
   "version": "1.0.0",
-  "private": true,
   "description": "Wheelman, the Rekt trading bot and CLI, for Knockout and Minute: a bot, a command line and an MCP server for agents.",
   "license": "Apache-2.0",
   "type": "module",
@@ -9,7 +8,7 @@
     "node": ">=22.18"
   },
   "bin": {
-    "wheelman": "src/cli.ts"
+    "wheelman": "dist/cli.js"
   },
   "scripts": {
     "wheelman": "node src/cli.ts",
@@ -18,7 +17,9 @@
     "paper": "node src/cli.ts run --paper",
     "dry-run": "node src/cli.ts run --dry-run",
     "test": "node --test test/*.test.ts",
-    "check": "tsc --noEmit && npm test"
+    "check": "tsc --noEmit && npm test",
+    "build": "rm -rf dist && tsc -p tsconfig.build.json && chmod +x dist/cli.js",
+    "prepack": "npm run build"
   },
   "dependencies": {
     "@rekt-trading/1000x": "^0.5.0",
@@ -27,5 +28,32 @@
   "devDependencies": {
     "@types/node": "^24.0.0",
     "typescript": "^5.9.0"
+  },
+  "homepage": "https://docs.rekt.money/tools/wheelman",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Asymmetra/rekt-wheelman.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Asymmetra/rekt-wheelman/issues"
+  },
+  "keywords": [
+    "rekt",
+    "knockout",
+    "minute",
+    "solana",
+    "trading-bot",
+    "mcp",
+    "cli"
+  ],
+  "files": [
+    "dist",
+    "skills",
+    "README.md",
+    "LICENSE",
+    ".env.example"
+  ],
+  "publishConfig": {
+    "access": "public"
   }
 }

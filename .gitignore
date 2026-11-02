@@ -11,3 +11,6 @@ coverage/
 keys/
 wallets/
 *keypair*.json
+
+# Build output: the publish workflow builds it.
+dist/

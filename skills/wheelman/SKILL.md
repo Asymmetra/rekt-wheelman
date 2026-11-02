@@ -6,8 +6,8 @@ description: Trade on Rekt Knockout and Minute with the wheelman CLI - read mark
 # Wheelman
 
 `wheelman` is a command line for Rekt Knockout (positions with a barrier and a take-profit) and Minute
-(sixty-second rounds). Run it from the repository folder as `node src/cli.ts <command>`, or as
-`wheelman <command>` after `npm link`. Always add `-o json`.
+(sixty-second rounds). Run it as `wheelman <command>` (installed with `npm install -g @rekt-trading/wheelman`), or from a
+clone as `node src/cli.ts <command>`. Always add `-o json`.
 
 ## The answer
 

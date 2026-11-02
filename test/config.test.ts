@@ -76,6 +76,18 @@ test('a strategy, a market and a price source must exist and fit together', () =
   assert.doesNotThrow(() => parseConfig({ ...good, PARAM_TAKE_PROFIT_X: '0', PARAM_TIME_STOP_S: '0' }, RUN, strategies));
 });
 
+test('your own Pyth key: needed for pyth, optional for auto, never printed, and it makes XAU tradable', () => {
+  const PYTH = 'pyth-key-that-must-never-print';
+  assert.match(refused({ ...good, PRICE_SOURCE: 'pyth' }), /needs your Pyth key/);
+  assert.match(refused({ ...good, PRICE_SOURCE: 'pyth', PYTH_API_KEY: PYTH, PYTH_FEEDS: 'BTC' }), /not <market>=<feed id>/);
+  assert.match(refused({ ...good, PRICE_SOURCE: 'pyth', PYTH_API_KEY_FILE: '/no/such/file' }), /PYTH_API_KEY_FILE names a file this process cannot read/);
+  assert.doesNotThrow(() => parseConfig({ ...good, PRICE_SOURCE: 'auto' }, RUN, strategies)); // no key: the exchange feed
+  assert.match(refused({ ...good, PRICE_SOURCE: 'auto', MARKET: 'XAU' }), /PYTH_API_KEY/); // no key: the refusal names the way out
+  assert.doesNotThrow(() => parseConfig({ ...good, PRICE_SOURCE: 'auto', MARKET: 'XAU', PYTH_API_KEY: PYTH }, RUN, strategies));
+  assert.doesNotThrow(() => parseConfig({ ...good, PRICE_SOURCE: 'pyth', MARKET: 'XAU', PYTH_API_KEY: PYTH }, RUN, strategies));
+  assert.equal(redact(`the stream said ${PYTH}`), 'the stream said [redacted]');
+});
+
 test('keys: the owner\'s wallet, a session key with OWNER, or just an address', () => {
   assert.match(refused({ ...good, WALLET_SECRET_KEY: undefined }), /KEYPAIR_PATH or WALLET_SECRET_KEY, or a session key/);
   assert.equal(parseConfig({ ...good, WALLET_SECRET_KEY: undefined }, { strategy: true, limits: true }, strategies).wallet, null);

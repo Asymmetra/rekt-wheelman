@@ -1,0 +1,118 @@
+# Publish @rekt-trading/wheelman to npm. By hand only, from `main`, for one commit.
+#
+# No npm token and no one-time code. The job proves who it is to npm with a short-lived OIDC credential (npm "trusted
+# publishing"); the package's Settings > Trusted Publisher on npmjs.com names THIS repository and THIS file name, so
+# renaming the file breaks publishing until the setting is changed too.
+#
+# What it does: installs from the lockfile, runs the type check and the tests, builds and packs the package, checks the
+# tarball against the sha256 you approved, and publishes that tarball. `dry_run` is true by default: it builds and runs
+# `npm publish --dry-run`, and sends nothing.
+#
+#   gh workflow run publish-wheelman.yml --ref main -f ref=<commit sha on main> -f expected_sha256=<sha256> -f dry_run=false
+name: publish-wheelman
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Commit to publish (a full sha that is on main)
+        required: true
+        type: string
+      expected_sha256:
+        description: sha256 of the tarball you approved; the job stops if the build differs
+        required: true
+        type: string
+      dry_run:
+        description: Build and dry-run only; send nothing to npm
+        required: true
+        default: true
+        type: boolean
+
+concurrency:
+  group: publish-wheelman
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    # Only from main: the workflow file that runs is the one on main, not one from a side branch.
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write # the OIDC credential npm trusted publishing exchanges for a publish token
+    steps:
+      - name: Check out the commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: The commit is a full sha on main
+        env:
+          REF: ${{ inputs.ref }}
+        run: |
+          set -eu
+          case "$REF" in *[!0-9a-f]*|'') echo "ref must be a full lower-case commit sha" >&2; exit 1;; esac
+          [ "${#REF}" -eq 40 ] || { echo "ref must be 40 hex characters" >&2; exit 1; }
+          git merge-base --is-ancestor "$REF" origin/main || { echo "$REF is not on main" >&2; exit 1; }
+          [ "$(git rev-parse HEAD)" = "$REF" ] || { echo "checked out another commit" >&2; exit 1; }
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+
+      # Trusted publishing needs npm 11.5.1 or newer.
+      - name: Current npm
+        run: |
+          npm install -g npm@11
+          npm --version
+
+      - name: Install from the lockfile
+        run: npm ci
+
+      - name: Type check and tests
+        run: npm run check
+
+      - name: Build and pack
+        run: |
+          set -eu
+          mkdir -p "$RUNNER_TEMP/stage"
+          npm pack --pack-destination "$RUNNER_TEMP/stage"
+
+      - name: The tarball is the one that was approved
+        id: tarball
+        env:
+          EXPECTED: ${{ inputs.expected_sha256 }}
+        run: |
+          set -eu
+          set -- "$RUNNER_TEMP"/stage/*.tgz
+          [ "$#" -eq 1 ] && [ -f "$1" ] || { echo "expected one tarball" >&2; exit 1; }
+          TGZ=$1
+          GOT=$(sha256sum "$TGZ" | cut -d' ' -f1)
+          echo "tarball: $TGZ"
+          echo "sha256:  $GOT"
+          echo "approved: $EXPECTED"
+          {
+            echo "tgz=$TGZ"
+            echo "sha256=$GOT"
+          } >> "$GITHUB_OUTPUT"
+          [ "$GOT" = "$EXPECTED" ] || { echo "the build differs from the approved sha256; nothing was published" >&2; exit 1; }
+
+      - name: Dry run
+        run: npm publish "${{ steps.tarball.outputs.tgz }}" --access public --dry-run
+
+      - name: Publish
+        if: ${{ !inputs.dry_run }}
+        run: |
+          set -eu
+          NAME=$(tar -xOzf "${{ steps.tarball.outputs.tgz }}" package/package.json | node -p "JSON.parse(require('fs').readFileSync(0,'utf8')).name")
+          VER=$(tar -xOzf "${{ steps.tarball.outputs.tgz }}" package/package.json | node -p "JSON.parse(require('fs').readFileSync(0,'utf8')).version")
+          if npm view "$NAME@$VER" version >/dev/null 2>&1; then echo "$NAME@$VER is already published" >&2; exit 1; fi
+          npm publish "${{ steps.tarball.outputs.tgz }}" --access public
+          echo "published $NAME@$VER sha256 ${{ steps.tarball.outputs.sha256 }}" >> "$GITHUB_STEP_SUMMARY"
