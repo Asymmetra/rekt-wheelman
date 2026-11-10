@@ -66,7 +66,7 @@ test('the exchange feed subscribes to the markets, reads tickers, and reconnects
 });
 
 test('a price source is picked by name, and an unknown name is refused', () => {
-  assert.deepEqual(priceSource('coinbase', undefined).markets, ['BTC', 'ETH', 'SOL', 'XRP']);
+  assert.deepEqual(priceSource('coinbase', undefined).markets, ['BTC', 'ETH', 'SOL', 'XRP', 'HYPE']);
   assert.throws(() => priceSource('replay', undefined), /REPLAY_FILE/);
   assert.throws(() => priceSource('other', undefined), /coinbase, pyth, auto, replay/);
 });
@@ -195,6 +195,6 @@ test('the key comes from PYTH_API_KEY or from a file, feeds are parsed, and auto
   assert.equal(resolveSourceName('auto', { PYTH_API_KEY: 'k' }), 'pyth');
   assert.equal(resolveSourceName('coinbase', { PYTH_API_KEY: 'k' }), 'coinbase'); // a key never switches an explicit choice
   assert.throws(() => priceSource('pyth', undefined, {}), /needs your Pyth key/);
-  assert.deepEqual(priceSource('auto', undefined, {}).markets, ['BTC', 'ETH', 'SOL', 'XRP']);
+  assert.deepEqual(priceSource('auto', undefined, {}).markets, ['BTC', 'ETH', 'SOL', 'XRP', 'HYPE']);
   assert.deepEqual(priceSource('auto', undefined, { PYTH_API_KEY: 'k-abcd' }).markets, []);
 });

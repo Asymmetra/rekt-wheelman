@@ -3,8 +3,8 @@
 import { PublicKey, type AddressLookupTableAccount } from '@solana/web3.js';
 import {
   PROGRAM_ID, assetId, collateralForTotal, configPda, connectionReader, decodeConfig, decodeFeeTermsTable, decodeMarket, decodeTraderAccount,
-  decodeVault, feeTermsTablePda, findBySeq, marketPda, memoReader, parseUsdc, pricingRemainingAccounts, readTradeHistory, toBase58, toHex,
-  vaultPda, withFeeTermsTable, type BuiltInstruction, type ClosedTrade,
+  decodeVault, feeTermsTablePda, findBySeq, isKind3Market, marketPda, memoReader, parseUsdc, priceAccountsFor, pricingRemainingAccounts,
+  readTradeHistory, toBase58, toHex, vaultPda, withFeeTermsTable, type BuiltInstruction, type ClosedTrade, type ConfigView, type MarketView,
 } from '@rekt-trading/1000x';
 import {
   ROUND_STATUS, decodeMinuteConfig, decodeMinuteEvent, decodePlayerAccount, minuteConfigPda, minuteEventPayloads, minuteIx, minutePlayerPda,
@@ -32,6 +32,17 @@ export interface RoundInfo {
   entryPrice: number | null;
   openedAt: number;
   deadline: number;
+}
+
+/**
+ * The accounts a round's venue open reads, by the market's feed kind, read on every round (a market's kind can change).
+ * On feed kind 3, priceAccountsFor. On the other kinds, the market's pricing accounts and its fee terms, as before:
+ * Minute refuses an empty list, and priceAccountsFor can return one on kind 2 when opens are orders.
+ */
+export function openRoundAccounts(market: MarketView, config: ConfigView): string[] {
+  return isKind3Market(market)
+    ? priceAccountsFor(market, config, 'open')
+    : withFeeTermsTable(pricingRemainingAccounts(market), market, config, 'open');
 }
 
 export function createMinuteClient(o: KnockoutClientOptions) {
@@ -114,7 +125,7 @@ export function createMinuteClient(o: KnockoutClientOptions) {
       { ...accounts, payer: toHex(signer), player_wallet: toHex(owner), funder: toHex(signer), wallet_token: walletToken,
         knockout_config: toHex(configPda().address), knockout_market: toHex(marketPda(assetId(order.market)).address), knockout_protocol_token: r.config.treasury },
       { game_kind: 0, direction: order.side === 'long' ? 0 : 1, total_in: total, min_collateral_out: predicted },
-      withFeeTermsTable(pricingRemainingAccounts(r.market), r.market, r.config, 'open'),
+      openRoundAccounts(r.market, r.config),
     ));
     // A round names Minute's accounts and the venue's: compile it against Minute's lookup table (frozen, read once).
     lookupTables ??= await (async () => {

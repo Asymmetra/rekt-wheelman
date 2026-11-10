@@ -1,6 +1,6 @@
 {
   "name": "@rekt-trading/wheelman",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Wheelman, the Rekt trading bot and CLI, for Knockout and Minute: a bot, a command line and an MCP server for agents.",
   "license": "Apache-2.0",
   "type": "module",
@@ -22,7 +22,7 @@
     "prepack": "npm run build"
   },
   "dependencies": {
-    "@rekt-trading/1000x": "^0.5.0",
+    "@rekt-trading/1000x": "^0.6.0",
     "@solana/web3.js": "^1.98.4"
   },
   "devDependencies": {

@@ -5,7 +5,7 @@ Knockout and Minute. You run it on your own machine, with your own wallet and yo
 It uses the Rekt SDK, `@rekt-trading/1000x` from npm, for both games, and it sends nothing the risk
 limits have not allowed.
 
-**Status: 1.0.0, on mainnet.** Install it from npm as `@rekt-trading/wheelman`, or run it from a clone of this repository.
+**Status: 1.0.2, on mainnet.** Install it from npm as `@rekt-trading/wheelman`, or run it from a clone of this repository.
 
 - Documentation: <https://docs.rekt.money>
 - Contact: support@asymmetra.xyz
@@ -245,7 +245,7 @@ A price is needed only for a strategy's signal and for paper fills. Pick the sou
 
 | `PRICE_SOURCE` | What it reads | Needs |
 |---|---|---|
-| `coinbase` (the default) | Coinbase's public ticker, for BTC, ETH, SOL and XRP | nothing: no key, no account |
+| `coinbase` (the default) | Coinbase's public ticker, for BTC, ETH, SOL, XRP and HYPE | nothing: no key, no account |
 | `pyth` | Pyth Pro's price stream, with your own key | `PYTH_API_KEY` (or `PYTH_API_KEY_FILE`) |
 | `auto` | Pyth when a key is set, Coinbase when not | optional: `PYTH_API_KEY` |
 | `replay` | a tape, for paper mode: one JSON line a price, `{"time": 1767225600000, "market": "BTC", "price": 100000}` | `REPLAY_FILE` |
@@ -282,6 +282,13 @@ you run Wheelman, with your own wallet; nobody hosts it for you.
   you are done: a token allowance has no clock of its own.
 - Never commit `.env`, `wallets/` or a keypair file; `.gitignore` excludes them.
 - Use `--paper` and `--dry-run` before trading, and after every change you make.
+
+## Changes
+
+- **1.0.2:** works on every live market with `@rekt-trading/1000x` 0.6.0 (install 0.6.0 or later). Opens, Minute
+  rounds and close requests take their accounts from the market's feed kind, read on every request. HYPE is
+  added; gold (XAU) is removed while its market is paused.
+- **1.0.1:** the first release through the publish workflow.
 
 ## Development
 
