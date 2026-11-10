@@ -25,7 +25,7 @@ export interface PriceSource {
  */
 export function replay(file: string): PriceSource {
   return {
-    markets: ['BTC', 'ETH', 'SOL', 'XRP', 'XAU'],
+    markets: ['BTC', 'ETH', 'SOL', 'XRP', 'HYPE'],
     async *ticks(markets) {
       const lines = readFileSync(file, 'utf8').split('\n');
       for (const [i, line] of lines.entries()) {
@@ -45,13 +45,16 @@ export function replay(file: string): PriceSource {
   };
 }
 
+/** The markets the public exchange feed quotes in USD. */
+export const EXCHANGE_MARKETS: readonly string[] = ['BTC', 'ETH', 'SOL', 'XRP', 'HYPE'];
+
 /**
  * Coinbase Exchange's public ticker websocket. No key and no account. It reconnects with a backoff
  * (1 s, doubling to 30 s, with jitter), and it reconnects when a minute passes with no ticker.
  */
 export function coinbase(url = 'wss://ws-feed.exchange.coinbase.com', Socket: typeof WebSocket = WebSocket): PriceSource {
   return {
-    markets: ['BTC', 'ETH', 'SOL', 'XRP'],
+    markets: [...EXCHANGE_MARKETS],
     async latest(market) {
       const res = await fetch(`https://api.exchange.coinbase.com/products/${market}-USD/ticker`, { signal: AbortSignal.timeout(10_000) });
       const body = (await res.json()) as { price?: string };

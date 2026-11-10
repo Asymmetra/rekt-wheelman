@@ -86,8 +86,8 @@ export async function setup(o: { yes: boolean; force: boolean; say: (line: strin
   const ids = [...strategies.values()].filter((s) => s.game === game).map((s) => s.id);
   for (const id of ids) say(`  ${id}: ${strategies.get(id)!.description}`);
   env.STRATEGY = await ask('Strategy', from('STRATEGY') ?? ids[0], (v) => (ids.includes(v) ? null : `one of ${ids.join(', ')}`));
-  env.MARKET = (await ask(`Market (${MARKETS.slice(0, 4).join(', ')})`, from('MARKET') ?? 'BTC', (v) =>
-    MARKETS.slice(0, 4).includes(v.toUpperCase()) ? null : `one of ${MARKETS.slice(0, 4).join(', ')}`)).toUpperCase();
+  env.MARKET = (await ask(`Market (${MARKETS.join(', ')})`, from('MARKET') ?? 'BTC', (v) =>
+    MARKETS.includes(v.toUpperCase()) ? null : `one of ${MARKETS.join(', ')}`)).toUpperCase();
   const strategy = strategies.get(env.STRATEGY)!;
   for (const [key, p] of Object.entries(strategy.params)) {
     const name = `PARAM_${key.toUpperCase()}`;

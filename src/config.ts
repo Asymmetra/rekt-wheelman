@@ -5,11 +5,12 @@ import { Keypair, PublicKey } from '@solana/web3.js';
 import { parseUsdc } from '@rekt-trading/1000x';
 import { Refusal } from './errors.ts';
 import { addSecret } from './journal.ts';
-import { PRICE_SOURCES, pythFeeds, pythKey, resolveSourceName } from './prices.ts';
+import { EXCHANGE_MARKETS, PRICE_SOURCES, pythFeeds, pythKey, resolveSourceName } from './prices.ts';
 import type { Limits } from './risk.ts';
 import type { Param, Params, Strategy } from './strategies/index.ts';
 
-export const MARKETS = ['BTC', 'ETH', 'SOL', 'XRP', 'XAU'];
+/** The markets Wheelman trades. A market the venue has paused is not listed here. */
+export const MARKETS = ['BTC', 'ETH', 'SOL', 'XRP', 'HYPE'];
 
 export interface Config {
   rpcUrl: string;
@@ -186,8 +187,8 @@ export function parseConfig(env: Env, needs: Needs, strategies: Map<string, Stra
     strategy = id === undefined ? null : (strategies.get(id) ?? null);
     if (id === undefined) problems.push(`STRATEGY is required: one of ${[...strategies.keys()].join(', ')}`);
     else if (strategy === null) problems.push(`STRATEGY ${id} does not exist: use one of ${[...strategies.keys()].join(', ')}`);
-    if (strategy?.game === 'knockout' && exchangeFeed && market === 'XAU') {
-      problems.push('the exchange feed has no XAU price; set PRICE_SOURCE=pyth with your Pyth key (PYTH_API_KEY), use replay, or add an adapter in src/prices.ts');
+    if (strategy?.game === 'knockout' && exchangeFeed && MARKETS.includes(market) && !EXCHANGE_MARKETS.includes(market)) {
+      problems.push(`the exchange feed has no ${market} price; set PRICE_SOURCE=pyth with your Pyth key (PYTH_API_KEY), use replay, or add an adapter in src/prices.ts`);
     }
   }
   if (strategy !== null) {

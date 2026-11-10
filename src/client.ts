@@ -10,7 +10,7 @@ import {
   MICRO_PER_BP, assetId, barrierMicroBps, closableFromSlotOf, commitOpen, computeUnitLimit, configPda, connectionReader, decodeConfig, decodeFeeTermsTable,
   decodeMarket, decodeTraderAccount, decodeVault, delegatePda, exitFeeBpsFor, feeTermsTablePda,
   findBySeq, heldPositions, inEventWindow, ix, levels, marketPda, memoReader, newRules, openFeeTerms, openTenorS, ourInstruction,
-  parseUsdc, phase, priceAccountsFor, readTradeHistory, receiptOf, sideRoom, sizeForTotal, toBase58, toHex, traderPda, vaultPda, venueEventsNamed,
+  parseUsdc, phase, priceAccountsFor, readTradeHistory, receiptOf, requestCloseFor, sideRoom, sizeForTotal, toBase58, toHex, traderPda, vaultPda, venueEventsNamed,
   type BuiltInstruction, type ClosedTrade, type MemoReaderOptions, type ConfigView, type MarketView, type Phase, type TraderAccountView, type VaultView,
 } from '@rekt-trading/1000x';
 import { MARKETS } from './config.ts';
@@ -242,11 +242,13 @@ export function createKnockoutClient(o: KnockoutClientOptions) {
     if (p === null) throw new Refusal('venue', 'PositionNotFound', `no open position has seq ${seq}`);
     const marketAddress = new PublicKey(toBase58(p.market));
     const m = await o.rpc.conn.getAccountInfo(marketAddress, 'confirmed');
-    const from = closableFromSlotOf(p, decodeConfig(new Uint8Array(c!.data)), decodeMarket(new Uint8Array(m!.data)));
+    const market = decodeMarket(new Uint8Array(m!.data));
+    const from = closableFromSlotOf(p, decodeConfig(new Uint8Array(c!.data)), market);
     if (from === null || from > clockOf(new Uint8Array(k!.data)).slot) {
       throw new Refusal('venue', 'CLOSE_NOT_YET', `position ${seq} cannot be closed yet (an order, or inside the minimum hold)`, true, 5_000);
     }
-    return bundleOf([ix.requestClose({
+    // requestCloseFor reads the market's feed kind on every request: the accounts a close carries depend on it.
+    return bundleOf([requestCloseFor(market, {
       authority: toHex(authority), config: toHex(configPda().address), market: toHex(marketAddress), positions: toHex(book),
       delegate: session ? toHex(delegatePda(owner).address) : null,
     }, seq)]);

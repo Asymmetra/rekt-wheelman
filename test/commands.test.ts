@@ -43,7 +43,7 @@ test('markets: facts per market, money as USDC text, no side room where no limit
   assert.equal(d.length, 5);
   assert.deepEqual(d[0]!.stake, { min: '0.200000', max: '1000.000000' });
   assert.deepEqual(d[0]!.sideRoom, { long: null, short: '5.000000' });
-  assert.deepEqual(calls, ['market BTC', 'market ETH', 'market SOL', 'market XRP', 'market XAU']);
+  assert.deepEqual(calls, ['market BTC', 'market ETH', 'market SOL', 'market XRP', 'market HYPE']);
 });
 
 test('preview: a Knockout position or a Minute round; bad arguments are refused by name', async () => {

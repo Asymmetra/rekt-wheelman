@@ -8,7 +8,8 @@ import { createServer } from 'node:http';
 import { test } from 'node:test';
 import { Keypair } from '@solana/web3.js';
 import { encodeBase58 } from '@rekt-trading/1000x';
-import { ConfigError, parseConfig, type Needs } from '../src/config.ts';
+import { ConfigError, MARKETS, parseConfig, type Needs } from '../src/config.ts';
+import { EXCHANGE_MARKETS } from '../src/prices.ts';
 import { addSecret, redact } from '../src/journal.ts';
 import { registry } from '../src/strategies/index.ts';
 
@@ -71,20 +72,23 @@ test('limits that contradict each other are refused', () => {
 test('a strategy, a market and a price source must exist and fit together', () => {
   assert.match(refused({ ...good, STRATEGY: undefined }), /STRATEGY is required/);
   assert.match(refused({ ...good, STRATEGY: 'nope' }), /does not exist/);
-  assert.match(refused({ ...good, MARKET: 'XAU' }), /no XAU price/);
+  assert.match(refused({ ...good, MARKET: 'XAU' }), /MARKET must be one of BTC, ETH, SOL, XRP, HYPE/); // gold is paused: not traded
+  assert.doesNotThrow(() => parseConfig({ ...good, MARKET: 'HYPE' }, RUN, strategies));
+  // Every market Wheelman trades has a price on the default (exchange) feed, so no market needs a key of its own.
+  for (const m of MARKETS) assert.ok(EXCHANGE_MARKETS.includes(m), `${m} has no exchange price`);
   assert.match(refused({ ...good, PRICE_SOURCE: 'replay' }), /REPLAY_FILE/);
   assert.doesNotThrow(() => parseConfig({ ...good, PARAM_TAKE_PROFIT_X: '0', PARAM_TIME_STOP_S: '0' }, RUN, strategies));
 });
 
-test('your own Pyth key: needed for pyth, optional for auto, never printed, and it makes XAU tradable', () => {
+test('your own Pyth key: needed for pyth, optional for auto, never printed', () => {
   const PYTH = 'pyth-key-that-must-never-print';
   assert.match(refused({ ...good, PRICE_SOURCE: 'pyth' }), /needs your Pyth key/);
   assert.match(refused({ ...good, PRICE_SOURCE: 'pyth', PYTH_API_KEY: PYTH, PYTH_FEEDS: 'BTC' }), /not <market>=<feed id>/);
   assert.match(refused({ ...good, PRICE_SOURCE: 'pyth', PYTH_API_KEY_FILE: '/no/such/file' }), /PYTH_API_KEY_FILE names a file this process cannot read/);
   assert.doesNotThrow(() => parseConfig({ ...good, PRICE_SOURCE: 'auto' }, RUN, strategies)); // no key: the exchange feed
-  assert.match(refused({ ...good, PRICE_SOURCE: 'auto', MARKET: 'XAU' }), /PYTH_API_KEY/); // no key: the refusal names the way out
-  assert.doesNotThrow(() => parseConfig({ ...good, PRICE_SOURCE: 'auto', MARKET: 'XAU', PYTH_API_KEY: PYTH }, RUN, strategies));
-  assert.doesNotThrow(() => parseConfig({ ...good, PRICE_SOURCE: 'pyth', MARKET: 'XAU', PYTH_API_KEY: PYTH }, RUN, strategies));
+  assert.doesNotThrow(() => parseConfig({ ...good, PRICE_SOURCE: 'auto', MARKET: 'HYPE' }, RUN, strategies)); // no key: the exchange feed
+  assert.doesNotThrow(() => parseConfig({ ...good, PRICE_SOURCE: 'auto', MARKET: 'HYPE', PYTH_API_KEY: PYTH }, RUN, strategies));
+  assert.doesNotThrow(() => parseConfig({ ...good, PRICE_SOURCE: 'pyth', MARKET: 'HYPE', PYTH_API_KEY: PYTH }, RUN, strategies));
   assert.equal(redact(`the stream said ${PYTH}`), 'the stream said [redacted]');
 });
 

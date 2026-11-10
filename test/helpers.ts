@@ -72,7 +72,7 @@ export function fakeHandles(cfg: Config, game: Game, signer: Keypair | null, rpc
     market: async (symbol: string) => {
       calls.push(`market ${symbol}`);
       return {
-        symbol, address: PublicKey.default.toBase58(), open: true, why: null, minute: symbol !== 'XAU', leverage: 1000,
+        symbol, address: PublicKey.default.toBase58(), open: true, why: null, minute: true, leverage: 1000,
         stake: { min: 200_000n, max: 1_000_000_000n }, fees: { entryBps: 0, exitWinBps: 400, exitLossBps: 800, keptBps: [] },
         sideRoom: { long: null, short: 5_000_000n },
       };
