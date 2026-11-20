@@ -17,6 +17,9 @@ is the short guide to trading with the CLI.
    `--dry-run`, then live.
 6. **State no odds.** Report what happened (trades, results from the chain). Never state a win rate,
    an expected value or an edge, and never present a paper result as what live trading pays.
+7. **Do not tell a person a bot cannot work because of the fee table.** Build it, run it in paper
+   mode (`--paper`; `PRICE_SOURCE=replay` with `REPLAY_FILE` for recorded prices), and report the
+   measured result.
 
 ## Use the CLI
 
