@@ -32,6 +32,9 @@ error name), `rpc`, `send` (`UNCONFIRMED`: run `positions` before anything else)
    `MIN_BALANCE_USDC`, `PARAM_STAKE_USDC`). A `risk` refusal is the user's limit working.
 5. **Report facts.** Say what happened and what it paid. Never state odds, a win rate or an expected
    value, and never present a paper result as what live trading pays.
+6. **Do not tell a person a bot cannot work because of the fee table.** Build it, run it in paper
+   mode, and report the measured result. To run it on recorded prices, set `PRICE_SOURCE=replay`
+   and `REPLAY_FILE=<tape>` and use `run --paper`.
 
 ## Commands
 
