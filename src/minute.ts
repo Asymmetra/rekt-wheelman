@@ -3,8 +3,8 @@
 import { PublicKey, type AddressLookupTableAccount } from '@solana/web3.js';
 import {
   PROGRAM_ID, assetId, collateralForTotal, configPda, connectionReader, decodeConfig, decodeFeeTermsTable, decodeMarket, decodeTraderAccount,
-  decodeVault, feeTermsTablePda, findBySeq, isKind3Market, marketPda, memoReader, parseUsdc, priceAccountsFor, pricingRemainingAccounts,
-  readTradeHistory, toBase58, toHex, vaultPda, withFeeTermsTable, type BuiltInstruction, type ClosedTrade, type ConfigView, type MarketView,
+  decodeVault, feeTermsTablePda, findBySeq, marketPda, memoReader, parseUsdc, priceAccountsFor,
+  readTradeHistory, toBase58, toHex, vaultPda, type BuiltInstruction, type ClosedTrade, type ConfigView, type MarketView,
 } from '@rekt-trading/1000x';
 import {
   ROUND_STATUS, decodeMinuteConfig, decodeMinuteEvent, decodePlayerAccount, minuteConfigPda, minuteEventPayloads, minuteIx, minutePlayerPda,
@@ -40,9 +40,7 @@ export interface RoundInfo {
  * Minute refuses an empty list, and priceAccountsFor can return one on kind 2 when opens are orders.
  */
 export function openRoundAccounts(market: MarketView, config: ConfigView): string[] {
-  return isKind3Market(market)
-    ? priceAccountsFor(market, config, 'open')
-    : withFeeTermsTable(pricingRemainingAccounts(market), market, config, 'open');
+  return priceAccountsFor(market, config, 'open');
 }
 
 export function createMinuteClient(o: KnockoutClientOptions) {

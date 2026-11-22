@@ -5,7 +5,7 @@ Knockout and Minute. You run it on your own machine, with your own wallet and yo
 It uses the Rekt SDK, `@rekt-trading/1000x` from npm, for both games, and it sends nothing the risk
 limits have not allowed.
 
-**Status: 1.0.2, on mainnet.** Install it from npm as `@rekt-trading/wheelman`, or run it from a clone of this repository.
+**Status: 1.0.3, on mainnet.** Install it from npm as `@rekt-trading/wheelman`, or run it from a clone of this repository.
 
 - Documentation: <https://docs.rekt.money>
 - Contact: support@asymmetra.xyz
@@ -285,6 +285,9 @@ you run Wheelman, with your own wallet; nobody hosts it for you.
 
 ## Changes
 
+- **1.0.3:** works with `@rekt-trading/1000x` 0.7.0, which the upgraded programs need: every open and add carries
+  the Instructions sysvar and the writable `CapitalState`, on Knockout and on Minute rounds. Update from 1.0.2, whose
+  opens the upgraded programs refuse.
 - **1.0.2:** works on every live market with `@rekt-trading/1000x` 0.6.0 (install 0.6.0 or later). Opens, Minute
   rounds and close requests take their accounts from the market's feed kind, read on every request. HYPE is
   added; gold (XAU) is removed while its market is paused.
