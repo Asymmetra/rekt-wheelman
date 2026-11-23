@@ -6,7 +6,8 @@ import {
   type AddressLookupTableAccount, type Keypair, type TransactionInstruction,
 } from '@solana/web3.js';
 import {
-  PACKET_LIMIT_BYTES, PROGRAM_ID, confirmSignature, connectionSignatureReader, errorForCode, minuteErrorForCode, programErrorCode,
+  MINUTE_PROGRAM_ID, PACKET_LIMIT_BYTES, PROGRAM_ID, confirmSignature, connectionSignatureReader, errorForCode, errorReadings, minuteErrorForCode,
+  programErrorCode,
   type Confirmation,
 } from '@rekt-trading/1000x';
 import type { Config } from './config.ts';
@@ -226,7 +227,8 @@ export async function transact(s: Sender, bundle: Bundle, send: boolean): Promis
 
   // Simulate first, always. Without a key (a dry run), skip the signature check.
   const sim = await s.rpc.conn.simulateTransaction(tx, { commitment: 'confirmed', sigVerify: s.signer !== null, replaceRecentBlockhash: s.signer === null });
-  if (sim.value.err !== null) throw refusalOf(sim.value.err, sim.value.logs ?? []);
+  const programs = list.map((x) => x.programId.toBase58());
+  if (sim.value.err !== null) throw refusalOf(sim.value.err, sim.value.logs ?? [], programs);
   const units = sim.value.unitsConsumed ?? 0;
   if (!send) return { signature: null, units, bytes, logs: sim.value.logs ?? [] };
   if (s.signer === null) throw new Refusal('config', 'NO_SIGNER', 'there is no key to sign with');
@@ -238,28 +240,58 @@ export async function transact(s: Sender, bundle: Bundle, send: boolean): Promis
   if (out.confirmation !== 'confirmed') {
     throw new Refusal('send', 'UNCONFIRMED', `${signature} is not confirmed: read your positions before you send again`, false, 60_000);
   }
-  if (out.err !== null) throw refusalOf(out.err, out.landed?.logMessages ?? []);
+  if (out.err !== null) throw refusalOf(out.err, out.landed?.logMessages ?? [], programs);
   return { signature, units: out.landed?.computeUnits ?? units, bytes, logs: out.landed?.logMessages ?? [] };
 }
 
-/** Name a failure with the SDK's catalogue, from the program that failed. */
-function refusalOf(err: unknown, logs: string[]): Refusal {
+const TOKEN_PROGRAM = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA';
+
+/**
+ * The program that refused: the first `Program <id> failed: ...` line (the innermost frame). With no
+ * such line, the top-level program of the instruction the error names (`programs[i]` is instruction i's).
+ */
+export function failedProgramOf(logs: string[], err?: unknown, programs: string[] = []): string | null {
+  for (const l of logs) {
+    const m = /^Program ([1-9A-HJ-NP-Za-km-z]{32,44}) failed: /.exec(l);
+    if (m !== null) return m[1]!;
+  }
+  const at = (err as { InstructionError?: [number, unknown] } | null)?.InstructionError?.[0];
+  return typeof at === 'number' ? (programs[at] ?? null) : null;
+}
+
+/**
+ * Name a failure with the catalogue OF THE PROGRAM THAT FAILED, never by the number alone. The venue,
+ * Minute and the games programs reuse the same numbers for different errors (a Duel 6058-6060 is not
+ * the venue's 6058-6060), so a code is read only against the program id in the logs.
+ */
+export function refusalOf(err: unknown, logs: string[], programs: string[] = []): Refusal {
   const code = programErrorCode(err);
-  const failed = logs.find((l) => / failed: /.test(l)) ?? '';
   if (code === null) return new Refusal('venue', 'TRANSACTION_ERROR', JSON.stringify(err), false);
-  if (failed.includes('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA')) {
+  const program = failedProgramOf(logs, err, programs);
+  if (program === TOKEN_PROGRAM) {
     return new Refusal('venue', 'TOKEN_TRANSFER_FAILED', `the USDC transfer failed (token error ${code}): does the wallet hold the stake?`, true);
   }
-  if (failed !== '' && !failed.includes(PROGRAM_ID)) {
+  if (program === MINUTE_PROGRAM_ID) {
     const m = minuteErrorForCode(code);
+    if (m === null) return new Refusal('venue', `MINUTE_ERROR_${code}`, `Minute refused with code ${code}, which this SDK does not know: update it`, false);
     // Minute's refusals carry no retry class; these three clear when the state changes.
-    const later = ['OpensPaused', 'VenueOpensPaused', 'NoFreeRoundSlot'].includes(m?.name ?? '');
-    if (m !== null) return new Refusal('venue', m.name, `Minute ${m.name} (${code}): ${m.msg ?? ''}`.trim(), later);
+    const later = ['OpensPaused', 'VenueOpensPaused', 'NoFreeRoundSlot'].includes(m.name);
+    return new Refusal('venue', m.name, `Minute ${m.name} (${code}): ${m.msg ?? ''}`.trim(), later);
   }
-  const v = errorForCode(code);
-  if (v === null) return new Refusal('venue', `ERROR_${code}`, `the program refused with code ${code}`, false);
-  const retryable = v.retryable === 'immediately' || v.retryable === 'after-state-changes';
-  return new Refusal('venue', v.name, `${v.name} (${code}): ${v.fix}`, retryable, WAIT[v.retryable] ?? 60_000);
+  if (program === PROGRAM_ID) {
+    const v = errorForCode(code);
+    if (v === null) return new Refusal('venue', `ERROR_${code}`, `the venue refused with code ${code}, which this SDK does not know: update it`, false);
+    const retryable = v.retryable === 'immediately' || v.retryable === 'after-state-changes';
+    return new Refusal('venue', v.name, `${v.name} (${code}): ${v.fix}`, retryable, WAIT[v.retryable] ?? 60_000);
+  }
+  if (program !== null) {
+    // Another program (a game, a token extension, a guard): its codes are its own. Name it; do not guess.
+    return new Refusal('venue', `PROGRAM_ERROR_${code}`, `program ${program} refused with code ${code}`, false);
+  }
+  // Neither the logs nor the instruction name the program, so give every reading this SDK has.
+  const readings = errorReadings(code);
+  const text = readings.length === 0 ? `code ${code}` : readings.map((r) => `${r.program} ${r.name}`).join(' or ');
+  return new Refusal('venue', `ERROR_${code}`, `the chain refused with ${text}; nothing names the program`, false);
 }
 
 /**

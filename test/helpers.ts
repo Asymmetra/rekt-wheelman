@@ -41,7 +41,7 @@ export function tokenAccount(amount: bigint): AccountInfo<Buffer> {
 }
 
 /** A connection that answers from a map of accounts and simulates every transaction clean. */
-export function fakeRpc(accounts = new Map<string, AccountInfo<Buffer>>(), simulate: { err: unknown; unitsConsumed: number } = { err: null, unitsConsumed: 1234 }): Rpc {
+export function fakeRpc(accounts = new Map<string, AccountInfo<Buffer>>(), simulate: { err: unknown; unitsConsumed: number; logs?: string[] } = { err: null, unitsConsumed: 1234 }): Rpc {
   // The Clock: slot 1000, unix time 2026-01-01.
   const clock = Buffer.alloc(40);
   clock.writeBigUInt64LE(1000n, 0);
@@ -52,7 +52,7 @@ export function fakeRpc(accounts = new Map<string, AccountInfo<Buffer>>(), simul
     getMultipleAccountsInfo: async (keys: PublicKey[]) => keys.map((k) => (k.equals(CLOCK) ? clockInfo : (accounts.get(k.toBase58()) ?? null))),
     getLatestBlockhash: async () => ({ blockhash: PublicKey.default.toBase58(), lastValidBlockHeight: 100 }),
     getRecentPrioritizationFees: async () => [],
-    simulateTransaction: async () => ({ value: { ...simulate, logs: [] } }),
+    simulateTransaction: async () => ({ value: { ...simulate, logs: simulate.logs ?? [] } }),
     getSignaturesForAddress: async () => [],
   };
   return { conn: conn as never, send: conn as never, host: 'rpc.example.com', call: async () => ({}) };

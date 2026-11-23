@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { test } from 'node:test';
 import type { AccountInfo } from '@solana/web3.js';
-import { traderPda } from '@rekt-trading/1000x';
+import { PROGRAM_ID, traderPda } from '@rekt-trading/1000x';
 import { USDC_MINT } from '../src/account.ts';
 import { execute, parseArgs, text } from '../src/cli.ts';
 import { ata } from '../src/client.ts';
@@ -87,7 +87,7 @@ test('open --minute opens a round; --dry-run simulates and sends nothing', async
 });
 
 test('a refused simulation is a venue error with the program\'s name and retry class', async () => {
-  const refused = { err: { InstructionError: [2, { Custom: 6057 }] }, unitsConsumed: 900 };
+  const refused = { err: { InstructionError: [2, { Custom: 6057 }] }, unitsConsumed: 900, logs: [`Program ${PROGRAM_ID} failed: custom program error: 0x1779`] };
   const ctx = await ctxWith({ OWNER: owner.key.publicKey.toBase58() }, { accounts: funded, simulate: refused });
   const e = error(await run(ctx, 'close', '74', '--dry-run'));
   assert.deepEqual([e.category, e.code, e.retryable], ['venue', 'PositionNotFound', false]);

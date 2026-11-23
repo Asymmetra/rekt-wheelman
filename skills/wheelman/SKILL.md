@@ -19,7 +19,8 @@ Every command prints one JSON line:
 Send the same command again only when `retryable` is `true`: then a resend cannot open a second
 position. On `false`, read `message`, change something, or ask the user. Categories: `config` (fix the
 arguments or the settings), `risk` (a limit the user set), `venue` (the program refused; `code` is its
-error name), `rpc`, `send` (`UNCONFIRMED`: run `positions` before anything else), `session`, `paper`.
+error name, read against the program that failed, since the programs reuse numbers; a code of another program is
+`PROGRAM_ERROR_<n>`, its program id in `message`), `rpc`, `send` (`UNCONFIRMED`: run `positions` before anything else), `session`, `paper`.
 
 ## Rules
 

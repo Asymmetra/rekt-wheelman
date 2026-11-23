@@ -63,6 +63,9 @@ The wallet needs SOL for fees and rent (0.01 SOL is enough to start) and USDC fo
   `{"ok": false, "error": {"category", "code", "message", "retryable"}}`. `retryable` is true only
   where sending the same request again cannot open a second position. The exit code is 0 on ok, 1 on
   an error, 2 on a bad flag.
+- A refusal's `code` is read against **the program that failed** (the first `failed` line of the logs, else the
+  instruction the error names), never by its number alone: the venue, Minute and the games programs reuse the same
+  numbers. A code of another program is `PROGRAM_ERROR_<n>`, with the program id in `message`.
 
 Every `open`, from the CLI, an agent or the bot, passes the same risk limits. Amounts in the output
 are USDC with 6 decimals; ids are text.
