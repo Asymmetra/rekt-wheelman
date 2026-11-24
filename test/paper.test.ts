@@ -10,7 +10,7 @@ import { replay, type PriceSource } from '../src/prices.ts';
 import type { Limits } from '../src/risk.ts';
 import { trade } from '../src/runner.ts';
 import { registry, type Intent, type Params } from '../src/strategies/index.ts';
-import { tempDir, venue } from './helpers.ts';
+import { TERMS, tempDir, venue } from './helpers.ts';
 
 const strategies = await registry();
 const limits: Limits = { maxStake: 1_000_000n, maxOpen: 2, dailyLoss: 10_000_000n, minBalance: 0n };
@@ -36,6 +36,16 @@ test('a Minute round also pays Minute\'s own fees', () => {
   assert.equal(t.engine.collateral, 990_000n);
   assert.equal(t.timerS, 60);
   assert.equal(payoutAt(t, 100, 'userExpiry'), 911_988n);
+});
+
+test('a classic Minute round freezes the market\'s classic slot when the market names one (NV1); a Knockout open does not', () => {
+  const v = venue();
+  const classic = { ...TERMS, winBps: 250, lossBps: 1200, writtenAt: 2n };
+  const named = { ...v, market: { ...v.market, classicRegs: 2 }, feeTable: { ...v.feeTable!, entries: [TERMS, classic] } } as typeof v;
+  assert.equal(termsFor(named, 'minute', 'long', 1_000_000n, 0, 0).feeTerms?.winBps, 250);
+  assert.equal(termsFor(named, 'knockout', 'long', 1_000_000n, 2, 0).feeTerms?.winBps, 400);
+  // No classic slot named: the ordinary terms.
+  assert.equal(termsFor(v, 'minute', 'long', 1_000_000n, 0, 0).feeTerms?.winBps, 400);
 });
 
 test('the barrier ends first, then the target, then the timer, then a close', () => {

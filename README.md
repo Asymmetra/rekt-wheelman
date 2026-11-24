@@ -5,7 +5,7 @@ Knockout and Minute. You run it on your own machine, with your own wallet and yo
 It uses the Rekt SDK, `@rekt-trading/1000x` from npm, for both games, and it sends nothing the risk
 limits have not allowed.
 
-**Status: 1.0.3, on mainnet.** Install it from npm as `@rekt-trading/wheelman`, or run it from a clone of this repository.
+**Status: 1.0.4, on mainnet.** Install it from npm as `@rekt-trading/wheelman`, or run it from a clone of this repository.
 
 - Documentation: <https://docs.rekt.money>
 - Contact: support@asymmetra.xyz
@@ -288,6 +288,9 @@ you run Wheelman, with your own wallet; nobody hosts it for you.
 
 ## Changes
 
+- **1.0.4:** works with `@rekt-trading/1000x` 0.8.1, which matches the upgraded venue; a classic Minute round carries
+  the market's fee-terms table writable, and paper mode prices a classic round on the market's classic Minute slot where it
+  names one. A refusal's `code` is read against the program that failed, never by its number alone.
 - **1.0.3:** works with `@rekt-trading/1000x` 0.7.0, which the upgraded programs need: every open and add carries
   the Instructions sysvar and the writable `CapitalState`, on Knockout and on Minute rounds. Update from 1.0.2, whose
   opens the upgraded programs refuse.
