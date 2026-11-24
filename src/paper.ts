@@ -76,12 +76,9 @@ export function termsFor(v: Venue, game: Game, side: Side, total: bigint, takePr
   const rungBps = m !== null ? m.params.rungBps : Math.round(takeProfitX * 10_000);
   const timer = m !== null ? m.params.initialTimerS : timerS;
   const preview = openPreview(v.config, v.market, collateral, rungBps, v.nowUnix, timer > 0 ? timer : null, m?.params.tier ?? 0);
-  // A classic Minute round freezes the market's classic slot when the market names one (`classicRegs` bits 0-2; NV1),
-  // since the SDK's Minute open carries the fee-terms table writable. Otherwise, and for a Knockout open, the open's terms.
-  const classicSlot = m !== null ? (v.market.classicRegs ?? 0) & 7 : 0;
-  const classicEntry = classicSlot !== 0 ? (v.feeTable?.entries[classicSlot - 1] ?? null) : null;
-  const fee: ReturnType<typeof openFeeTerms> =
-    classicEntry !== null && classicEntry.writtenAt !== 0n ? { kind: 'terms', slot: classicSlot, entry: classicEntry } : openFeeTerms(v.config, v.market, v.feeTable);
+  // A classic Minute round freezes the market's classic slot where the venue would (the SDK's Minute open carries the
+  // fee-terms table writable); a Knockout open freezes the ordinary terms.
+  const fee = openFeeTerms(v.config, v.market, v.feeTable, m !== null ? { tier: m.params.tier } : undefined);
   // An open under fee terms freezes the terms' loss rate as its exit-fee bound; otherwise the market's
   // rate, or the venue's. (The program's rule; the SDK has no builder for an open's engine position.)
   const exitFeeBps = fee.kind === 'terms' ? BigInt(fee.entry.lossBps) : exitFeeBpsFor(BigInt(v.market.exitFeeBps), p.exitFeeBps);

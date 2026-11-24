@@ -40,7 +40,7 @@ test('a Minute round also pays Minute\'s own fees', () => {
 
 test('a classic Minute round freezes the market\'s classic slot when the market names one (NV1); a Knockout open does not', () => {
   const v = venue();
-  const classic = { ...TERMS, winBps: 250, lossBps: 1200, writtenAt: 2n };
+  const classic = { ...TERMS, winBps: 250, lossBps: 1200, writtenAt: 2n, feeShape: 1 };
   const named = { ...v, market: { ...v.market, classicRegs: 2 }, feeTable: { ...v.feeTable!, entries: [TERMS, classic] } } as typeof v;
   assert.equal(termsFor(named, 'minute', 'long', 1_000_000n, 0, 0).feeTerms?.winBps, 250);
   assert.equal(termsFor(named, 'knockout', 'long', 1_000_000n, 2, 0).feeTerms?.winBps, 400);
