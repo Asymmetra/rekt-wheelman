@@ -10,7 +10,7 @@ import {
   ROUND_STATUS, decodeMinuteConfig, decodeMinuteEvent, decodePlayerAccount, minuteConfigPda, minuteEventPayloads, minuteIx, minutePlayerPda,
   minutePlayerTokenPda, minuteTraderBookFor, type MinuteConfigView,
 } from '@rekt-trading/1000x'; // Minute's API ships in the same package
-import { ata, bundleOf, marketSymbol, type KnockoutClientOptions, type Settlement, type Side } from './client.ts';
+import { ata, bundleOf, linked, marketSymbol, referrerToLink, type KnockoutClientOptions, type Settlement, type Side } from './client.ts';
 import { Refusal } from './errors.ts';
 import { payoutAt, scaled, termsFor } from './paper.ts';
 import { CLOCK, transact, type Bundle, type Sender } from './rpc.ts';
@@ -130,7 +130,8 @@ export function createMinuteClient(o: KnockoutClientOptions) {
       const t = (await o.rpc.conn.getAddressLookupTable(new PublicKey(toBase58(m.lookupTable)), { commitment: 'confirmed' })).value;
       return t === null ? [] : [t];
     })();
-    return { ...bundleOf(built), lookupTables };
+    // The link goes first: [set_referral, init_player, open_round].
+    return { ...bundleOf(linked(built, owner, await referrerToLink(o, session), 0)), lookupTables };
   }
 
   const settlementOf = (t: ClosedTrade, minute: MinuteConfigView, gross: bigint | null): Settlement => {

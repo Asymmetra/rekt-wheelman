@@ -28,13 +28,15 @@ flags
   --target <x>       take-profit as a multiple of the stake (2 or more)
   --timer <s>        the position's own timer in seconds (26 or more)
   --minute           a Minute round instead of a Knockout position
+  --referrer <addr>  open, session start: link the owner to this referrer's wallet in the same transaction,
+                     when the owner has no link yet (for life; the owner's key signs it)
   --market <m>       the market of a paper close or paper positions
   --allowance <usd>  session: the most it may spend          --expires <time>  session: 30m, 24h, 7d
   --fuel <sol>       session: SOL for its fees (0.01)         --env <file>      load this file, not .env
   --yes, --force     setup: no prompts; replace .env`;
 
 const BOOLEAN = new Set(['paper', 'dry-run', 'minute', 'yes', 'force', 'help']);
-const VALUE = new Set(['output', 'env', 'target', 'timer', 'market', 'allowance', 'expires', 'fuel']);
+const VALUE = new Set(['output', 'env', 'target', 'timer', 'market', 'allowance', 'expires', 'fuel', 'referrer']);
 
 export interface Parsed {
   words: string[];
@@ -79,6 +81,7 @@ export async function execute(p: Parsed, ctx: cmd.Ctx, signal: AbortSignal): Pro
     target: numberFlag(f, 'target'), timer: numberFlag(f, 'timer'), fuel: numberFlag(f, 'fuel'),
     market: typeof f.market === 'string' ? f.market : undefined,
     allowance: typeof f.allowance === 'string' ? f.allowance : undefined, expires: typeof f.expires === 'string' ? f.expires : undefined,
+    referrer: typeof f.referrer === 'string' ? f.referrer : undefined,
   };
   try {
     const data = await (async () => {

@@ -34,6 +34,8 @@ export interface Args {
   allowance?: string;
   expires?: string;
   fuel?: number;
+  /** A referrer's wallet (base58): the trade links the owner to it when the owner has no link yet. */
+  referrer?: string;
 }
 
 /** Built once per process. `agent`: the MCP server, which never signs with the owner's key. */
@@ -44,7 +46,7 @@ export interface Ctx {
   prices: PriceSource | null;
   rpcs: Map<string, Promise<Rpc>>;
   /** Tests replace the connection: everything above it (config, guard, envelope) runs as usual. */
-  connect?: (cfg: Config, game: Game, signer: Keypair | null) => Promise<Handles>;
+  connect?: (cfg: Config, game: Game, signer: Keypair | null, referrer?: PublicKey | null) => Promise<Handles>;
 }
 
 export interface Handles {
@@ -64,13 +66,26 @@ export async function makeCtx(env: Env, agent = false): Promise<Ctx> {
   return { env, strategies: await registry(extra), agent, prices: null, rpcs: new Map() };
 }
 
+/** `--referrer`: a wallet address on the curve, or undefined when not given. */
+export function referrerArg(a: Args): PublicKey | null {
+  if (a.referrer === undefined) return null;
+  let k: PublicKey;
+  try {
+    k = new PublicKey(a.referrer);
+  } catch {
+    throw new Refusal('config', 'BAD_ARGUMENT', 'referrer must be a wallet address');
+  }
+  if (!PublicKey.isOnCurve(k.toBytes())) throw new Refusal('config', 'BAD_ARGUMENT', 'referrer must be a wallet address (on the curve), not a program account');
+  return k;
+}
+
 /** Parse what the command needs, and connect: the cluster is checked once per endpoint. */
-async function handles(ctx: Ctx, needs: Needs, game: Game = 'knockout'): Promise<Handles> {
+async function handles(ctx: Ctx, needs: Needs, game: Game = 'knockout', referrer: PublicKey | null = null): Promise<Handles> {
   const cfg = parseConfig(ctx.env, needs, ctx.strategies);
   setJournal(join(cfg.stateDir, 'journal.jsonl'));
   // An agent signs only with a session key; the owner's key never reaches it.
   const signer = ctx.agent ? cfg.session : (cfg.session ?? cfg.wallet);
-  if (ctx.connect !== undefined) return ctx.connect(cfg, game, signer);
+  if (ctx.connect !== undefined) return ctx.connect(cfg, game, signer, referrer);
   let rpc = ctx.rpcs.get(cfg.rpcUrl);
   if (rpc === undefined) {
     rpc = (async () => {
@@ -81,7 +96,7 @@ async function handles(ctx: Ctx, needs: Needs, game: Game = 'knockout'): Promise
     ctx.rpcs.set(cfg.rpcUrl, rpc);
   }
   const owner = cfg.owner ?? PublicKey.default;
-  const o = { rpc: await rpc, owner, signer, maxPriorityFee: cfg.maxPriorityFee, tip: cfg.tip, store: fileStore(cfg.stateDir) };
+  const o = { rpc: await rpc, owner, signer, maxPriorityFee: cfg.maxPriorityFee, tip: cfg.tip, store: fileStore(cfg.stateDir), referrer };
   return {
     cfg, rpc: o.rpc, owner, game, knockout: createKnockoutClient(o), minute: createMinuteClient(o),
     sender: { rpc: o.rpc, payer: signer?.publicKey ?? owner, signer, maxPriorityFee: cfg.maxPriorityFee, tip: cfg.tip },
@@ -198,7 +213,7 @@ export async function open(ctx: Ctx, a: Args) {
     const p = paper.open.find((x) => x.id === id);
     return { paper: true, id, market, side: intent.side, stake: usdc(intent.stake), entryPrice: p?.entry ?? null, usdc: usdc(paper.cash) };
   }
-  const h = await handles(ctx, { limits: true, key: a.dryRun === true ? 'address' : 'signer' }, game);
+  const h = await handles(ctx, { limits: true, key: a.dryRun === true ? 'address' : 'signer' }, game, referrerArg(a));
   if (a.dryRun !== true) needSigner(ctx, h);
   const live = new Live(h, market);
   await live.refresh();
@@ -268,7 +283,9 @@ export async function sessionStartCommand(ctx: Ctx, a: Args) {
   }
   const ownerSender = { ...h.sender, payer: h.owner, signer: h.cfg.wallet };
   const maxStake = (await h.knockout.market(h.cfg.market)).stake.max;
-  const r = await sessionStart(ownerSender, h.owner, h.cfg.sessionPath, { allowance, seconds: durationS(a.expires), fuelSol: a.fuel ?? 0.01 }, a.dryRun !== true, maxStake);
+  const r = await sessionStart(
+    ownerSender, h.owner, h.cfg.sessionPath, { allowance, seconds: durationS(a.expires), fuelSol: a.fuel ?? 0.01 }, a.dryRun !== true, maxStake, referrerArg(a),
+  );
   return {
     ...r, allowance: usdc(r.allowance),
     agentEnv: a.dryRun === true ? null : { OWNER: r.owner, SESSION_KEYPAIR_PATH: h.cfg.sessionPath },

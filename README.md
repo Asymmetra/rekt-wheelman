@@ -5,7 +5,7 @@ Knockout and Minute. You run it on your own machine, with your own wallet and yo
 It uses the Rekt SDK, `@rekt-trading/1000x` from npm, for both games, and it sends nothing the risk
 limits have not allowed.
 
-**Status: 1.0.5, on mainnet.** Install it from npm as `@rekt-trading/wheelman`, or run it from a clone of this repository.
+**Status: 1.1.0, on mainnet.** Install it from npm as `@rekt-trading/wheelman`, or run it from a clone of this repository.
 
 - Documentation: <https://docs.rekt.money>
 - Contact: support@asymmetra.xyz
@@ -59,6 +59,11 @@ The wallet needs SOL for fees and rent (0.01 SOL is enough to start) and USDC fo
   `.wheelman/paper.json`. Nothing is sent.
 - `--dry-run` on `open`, `close`, `run` and `session`: builds the real transaction, simulates it on
   mainnet, prints its compute units and bytes, and sends nothing. With no key, set `OWNER`.
+- `--referrer <wallet>` on `open` and `session start`: links the owner to that referrer in the same
+  transaction, when the owner has no link yet (a link is for life; a later trade leaves it out). The
+  owner's key signs the link, so a session key cannot carry it. The referrer's record is made when it
+  is missing; a referrer wallet that does not exist on chain is refused (6393). See
+  [Referrals](https://docs.rekt.money/referrals).
 - `-o json` prints one line: `{"ok": true, "data": ...}` or
   `{"ok": false, "error": {"category", "code", "message", "retryable"}}`. `retryable` is true only
   where sending the same request again cannot open a second position. The exit code is 0 on ok, 1 on
@@ -288,6 +293,8 @@ you run Wheelman, with your own wallet; nobody hosts it for you.
 
 ## Changes
 
+- **1.1.0:** works with `@rekt-trading/1000x` 0.9.0, which matches the upgraded venue. `--referrer <wallet>` on `open`
+  and `session start` links the owner to a referrer in the same transaction when the owner has no link yet.
 - **1.0.5:** works with `@rekt-trading/1000x` 0.8.2: paper mode takes a classic Minute round's terms from the SDK's
   `openFeeTerms` with the classic option, which applies the venue's whole rule for the classic slot.
 - **1.0.4:** works with `@rekt-trading/1000x` 0.8.1, which matches the upgraded venue; a classic Minute round carries

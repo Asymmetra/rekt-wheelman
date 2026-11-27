@@ -8,7 +8,7 @@ import {
   delegatePda, endSession, ix, sessionStanding, toBase58, toHex, traderPda, vaultPda, type MemoReaderOptions,
 } from '@rekt-trading/1000x';
 import { minuteConfigPda, minuteIx, minutePlayerPda, minutePlayerTokenPda, minuteTraderBookFor } from '@rekt-trading/1000x'; // Minute's API ships in the same package
-import { ata, bundleOf, tokenAmount } from './client.ts';
+import { ata, bundleOf, linked, referrerToLink, tokenAmount } from './client.ts';
 import { Refusal } from './errors.ts';
 import { CLOCK, transact, type Rpc, type Sender } from './rpc.ts';
 
@@ -90,7 +90,9 @@ function checkSessionPlan(p: SessionPlan): void {
  * there is none, authorises the key (expiry, spend window, SPL allowance) and sends it SOL for fees.
  * The key is written (mode 600) BEFORE the send, and removed only when the program refuses.
  */
-export async function sessionStart(s: Sender, owner: PublicKey, path: string, plan: SessionPlan, send: boolean, maxStake: bigint) {
+export async function sessionStart(
+  s: Sender, owner: PublicKey, path: string, plan: SessionPlan, send: boolean, maxStake: bigint, referrer: PublicKey | null = null,
+) {
   checkSessionPlan(plan);
   if (send && existsSync(path)) throw new Refusal('session', 'SESSION_EXISTS', `${path} exists: end that session first (wheelman session end)`);
   const key = Keypair.generate();
@@ -115,7 +117,9 @@ export async function sessionStart(s: Sender, owner: PublicKey, path: string, pl
       windowLimit: plan.allowance > maxStake ? plan.allowance : maxStake,
     },
   }));
-  const bundle = bundleOf(built);
+  // A referrer given: the owner's link rides here, after the book is made (the owner signs this transaction).
+  const to = await referrerToLink({ rpc: s.rpc, owner: me, signer: null, referrer }, false);
+  const bundle = bundleOf(linked(built, me, to, b === null ? 1 : 0));
   bundle.instructions.push(SystemProgram.transfer({ fromPubkey: me, toPubkey: key.publicKey, lamports: Math.round(plan.fuelSol * 1e9) }));
   if (send) {
     mkdirSync(join(path, '..'), { recursive: true, mode: 0o700 });

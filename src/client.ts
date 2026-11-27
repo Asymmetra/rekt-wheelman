@@ -10,7 +10,8 @@ import {
   MICRO_PER_BP, assetId, barrierMicroBps, closableFromSlotOf, commitOpen, computeUnitLimit, configPda, connectionReader, decodeConfig, decodeFeeTermsTable,
   decodeMarket, decodeTraderAccount, decodeVault, delegatePda, exitFeeBpsFor, feeTermsTablePda,
   findBySeq, heldPositions, inEventWindow, ix, levels, marketPda, memoReader, newRules, openFeeTerms, openTenorS, ourInstruction,
-  parseUsdc, phase, priceAccountsFor, readTradeHistory, receiptOf, requestCloseFor, sideRoom, sizeForTotal, toBase58, toHex, traderPda, vaultPda, venueEventsNamed,
+  parseUsdc, phase, priceAccountsFor, readTradeHistory, receiptOf, referralLinkPda, requestCloseFor, sideRoom, sizeForTotal, toBase58, toHex, traderPda, vaultPda,
+  venueEventsNamed, withReferralLink,
   type BuiltInstruction, type ClosedTrade, type MemoReaderOptions, type ConfigView, type MarketView, type Phase, type TraderAccountView, type VaultView,
 } from '@rekt-trading/1000x';
 import { MARKETS } from './config.ts';
@@ -36,6 +37,32 @@ export interface KnockoutClientOptions {
   tip?: { lamports: number; account: PublicKey } | null;
   /** Where settled transactions are kept, so none is fetched twice. */
   store?: MemoReaderOptions['store'];
+  /**
+   * A referrer's wallet: the next trade links the owner to it (`set_referral`, in the trade's own transaction) when the owner
+   * has no link yet. The owner signs the link, so a session key cannot carry it. A link is for life.
+   */
+  referrer?: PublicKey | null;
+}
+
+/**
+ * The referrer to link in this trade, or null: none was given, or the owner already has a link (a second one is refused).
+ * Refused locally: a session key (the owner signs a link) and the owner as its own referrer.
+ */
+export async function referrerToLink(o: KnockoutClientOptions, session: boolean): Promise<PublicKey | null> {
+  const referrer = o.referrer ?? null;
+  if (referrer === null) return null;
+  if (session) {
+    throw new Refusal('session', 'REFERRER_NEEDS_OWNER', "a referral link is signed by the owner's key, not a session key: make the first trade with the owner's key");
+  }
+  if (referrer.equals(o.owner)) throw new Refusal('config', 'BAD_ARGUMENT', 'the referrer cannot be the owner itself');
+  const link = await o.rpc.conn.getAccountInfo(referralLinkPda(o.owner).address, 'confirmed');
+  return link === null ? referrer : null;
+}
+
+/** `built` with the owner's referral link at `after` when {@link referrerToLink} names one: the link comes before the trade's commit. */
+export function linked(built: BuiltInstruction[], owner: PublicKey, referrer: PublicKey | null, after: number): BuiltInstruction[] {
+  if (referrer === null) return built;
+  return withReferralLink(built, { referee: toHex(owner), payer: toHex(owner), referrer: toHex(referrer), after }) as BuiltInstruction[];
 }
 
 export interface Order {
@@ -233,7 +260,8 @@ export function createKnockoutClient(o: KnockoutClientOptions) {
         min_collateral_out: size.collateral, referrer: null, tier: 0, opener_tag: BigInt(Date.now()) * 100n + BigInt(n + 1),
       }, priceAccountsFor(r.market, r.config, 'open')));
     });
-    return bundleOf(built);
+    // A first trade is [init_trader_account, set_referral, open]: the link marks the book it just saw made.
+    return bundleOf(linked(built, owner, await referrerToLink(o, session), r.book === null ? 1 : 0));
   }
 
   async function buildClose(seq: bigint): Promise<Bundle> {

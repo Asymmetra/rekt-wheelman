@@ -56,6 +56,8 @@ price fills it, so `entryPrice` is `null` for a moment. A Minute round has no ea
 
 1. The owner: `wheelman setup` (wallet, RPC, limits), then
    `wheelman session start --allowance 20 --expires 24h`. It prints `OWNER` and `SESSION_KEYPAIR_PATH`.
+   An owner who came through a referrer adds `--referrer <wallet>`: the link rides in the same
+   transaction, once and for life. A session key cannot make a link.
 2. The agent's settings file holds `RPC_URL`, `OWNER`, `SESSION_KEYPAIR_PATH` and the risk limits, and
    no owner key. Pass it with `--env <file>`.
 3. The same commands are MCP tools: `node src/cli.ts mcp --env <file>` (add `--paper` for paper-only
